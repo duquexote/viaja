@@ -5,7 +5,7 @@ flowchart TB
 
     viaja["<b>ViaJá</b><br/>[Sistema de software]<br/><br/>Plataforma web que reúne busca de passagens, hospedagens e passeios,<br/>montagem de itinerário com validação de datas, assistente de roteiro com IA<br/>e solicitação de reserva sem pagamento"]
 
-    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Claude, da Anthropic]<br/><br/>Modelo de linguagem que escolhe, entre as ofertas<br/>enviadas, as que formam o roteiro sugerido"]
+    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Gemini, do Google]<br/><br/>Modelo de linguagem que escolhe, entre as ofertas<br/>enviadas, as que formam o roteiro sugerido"]
     email["<b>Serviço de e-mail</b><br/>[Sistema externo: servidor SMTP]<br/><br/>Entrega a confirmação de cadastro e os avisos<br/>de mudança de status das reservas"]
 
     viajante -->|"Busca, monta itinerário,<br/>solicita reserva e avalia<br/>[HTTPS]"| viaja

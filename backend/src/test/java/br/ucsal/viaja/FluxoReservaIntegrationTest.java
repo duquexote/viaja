@@ -6,29 +6,35 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import br.ucsal.viaja.service.ia.ClienteLLM;
+
 /**
  * Teste de ponta a ponta do fluxo do BPMN (objetivo OE4), com a base de demonstração em H2:
  * o viajante busca, solicita a reserva, o fornecedor aceita e o viajante é notificado.
- * Também cobre as regras de acesso por perfil, a RN-01, a RN-10 e o assistente sem IA configurada.
+ * Também cobre as regras de acesso por perfil, a RN-01, a RN-10 e o assistente de roteiro,
+ * com o serviço de IA substituído por um dublê (os testes não chamam a API externa).
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:viaja-teste;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "viaja.ia.api-key=",
         "viaja.seed.ativo=true",
         "viaja.seed.senha=senha-de-teste"
 })
@@ -42,6 +48,49 @@ class FluxoReservaIntegrationTest {
 
     @Autowired
     private ObjectMapper json;
+
+    /** Dublê do serviço de IA: por padrão responde que não está disponível. */
+    @MockitoBean
+    private ClienteLLM llm;
+
+    @Test
+    void assistenteComIaSoAceitaOfertasCadastradas() throws Exception {
+        String viajante = login("carla@viaja.com");
+        LocalDate ida = LocalDate.now().plusDays(7);
+        long passagem = primeiroId(get("/api/ofertas/passagens").param("origem", "Salvador")
+                .param("destino", "Lençóis").param("data", ida.toString()));
+        long hospedagem = primeiroId(get("/api/ofertas/hospedagens").param("cidade", "Lençóis"));
+        long passeio = primeiroId(get("/api/ofertas/passeios").param("cidade", "Lençóis")
+                .param("data", ida.plusDays(2).toString()));
+
+        // A "IA" escolhe três ofertas reais e inventa uma quarta, que não existe no banco (RN-09).
+        when(llm.disponivel()).thenReturn(true);
+        when(llm.completar(anyString(), anyString())).thenReturn("""
+                {"dias":[
+                  {"data":"%s","itens":[{"ofertaId":%d,"horario":"07:00","motivo":"Ida."},
+                                        {"ofertaId":%d,"horario":"14:00","motivo":"Bem avaliada."}]},
+                  {"data":"%s","itens":[{"ofertaId":%d,"horario":"08:00","motivo":"Trilha."},
+                                        {"ofertaId":987654321,"horario":"20:00","motivo":"Inventada."}]}],
+                 "custoTotal":1,"observacoes":"Roteiro de teste."}
+                """.formatted(ida, passagem, hospedagem, ida.plusDays(2), passeio));
+
+        String pedido = """
+                {"origem":"Salvador","destino":"Lençóis","dataIda":"%s","dataVolta":"%s",
+                 "pessoas":1,"orcamento":3000,"interesses":["Trilhas"]}
+                """.formatted(ida, ida.plusDays(3));
+        JsonNode roteiro = lerJson(mvc.perform(post("/api/assistente/roteiro")
+                        .header("Authorization", "Bearer " + viajante)
+                        .contentType(MediaType.APPLICATION_JSON).content(pedido))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fonte").value("IA"))
+                .andExpect(jsonPath("$.aviso").isEmpty())
+                .andExpect(jsonPath("$.observacoes").value("Roteiro de teste."))
+                .andReturn());
+
+        List<Long> escolhidas = new ArrayList<>();
+        roteiro.get("dias").forEach(dia -> dia.get("itens").forEach(item -> escolhidas.add(item.get("ofertaId").asLong())));
+        assertThat(escolhidas).containsExactlyInAnyOrder(passagem, hospedagem, passeio);
+    }
 
     @Test
     void solicitacaoAceitaPeloFornecedorConfirmaDescontaVagasENotifica() throws Exception {
@@ -143,6 +192,10 @@ class FluxoReservaIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return lerJson(resultado).get("token").asText();
+    }
+
+    private long primeiroId(org.springframework.test.web.servlet.RequestBuilder busca) throws Exception {
+        return lerJson(mvc.perform(busca).andExpect(status().isOk()).andReturn()).get(0).get("id").asLong();
     }
 
     private JsonNode lerJson(MvcResult resultado) throws Exception {

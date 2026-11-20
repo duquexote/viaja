@@ -60,8 +60,5 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     @Query("select distinct p.categoria from Passeio p where p.ativa = true order by p.categoria")
     List<String> categorias();
 
-    @Query("select max(p.partida) from Passagem p")
-    LocalDateTime ultimaPartida();
-
     long countByAtivaTrue();
 }

@@ -24,7 +24,7 @@ Quem usa o ViaJá e com quais sistemas externos ele conversa.
 | Fornecedor | Pessoa | Empresa de transporte, hotel, pousada ou guia. Publica ofertas e aceita ou recusa solicitações |
 | Administrador | Pessoa | Aprova ou bloqueia fornecedores, modera avaliações e acompanha indicadores |
 | ViaJá | Sistema | Plataforma web de busca, itinerário e solicitação de reserva sem pagamento |
-| Serviço de IA | Sistema externo | API Claude, da Anthropic. Recebe o pedido de viagem e a lista de ofertas e devolve o roteiro em JSON |
+| Serviço de IA | Sistema externo | API Gemini, do Google. Recebe o pedido de viagem e a lista de ofertas e devolve o roteiro em JSON |
 | Serviço de e-mail | Sistema externo | Servidor SMTP que entrega a confirmação de cadastro e os avisos de reserva |
 
 Fora do contexto de propósito (seção 1.3 do planejamento): gateway de pagamento, emissão de bilhetes e APIs de companhias aéreas ou redes hoteleiras.
@@ -39,14 +39,14 @@ As partes que rodam separadas e como se comunicam.
 |---|---|---|
 | Aplicação web (SPA) | JavaScript, React 19, Vite 8, Tailwind CSS 4 | Interface responsiva no navegador. Não guarda regra de negócio nem segredo |
 | API REST | Java 17, Spring Boot 3.5, Spring Security, Spring Data JPA | Regras de negócio, autenticação por JWT, validação de datas e vagas, notificações e chamada ao serviço de IA |
-| Banco de dados | PostgreSQL hospedado no Supabase, esquema `viaja` | Usuários, ofertas, itinerários, reservas, avaliações e notificações |
+| Banco de dados | H2 em memória, embutido na API | Usuários, ofertas, itinerários, reservas, avaliações e notificações |
 
 Decisões que aparecem neste nível:
 
 - **A SPA só fala com a API.** O navegador nunca acessa o banco nem o serviço de IA. Por isso a chave da API de IA fica só no back-end (RNF-05).
 - **Sessão sem estado.** Depois do login a SPA envia o token JWT (válido por 24 h) no cabeçalho `Authorization` de cada chamada (RNF-03).
-- **Supabase como banco gerenciado.** A API conecta por JDBC com TLS no *Session pooler*. As tabelas ficam no esquema `viaja`, e não no `public`, porque o Supabase expõe o `public` pela Data API dele.
-- **H2 em memória para desenvolvimento.** Sem `DB_URL` configurada, a mesma API sobe com H2 e recria a base de demonstração a cada início.
+- **Banco em memória.** O H2 roda dentro do processo da API, sem instalação. Os dados existem enquanto a API está no ar e a base de demonstração é recriada a cada início, o que deixa a apresentação sempre no mesmo ponto de partida. Ele aparece como contêiner separado porque é onde os dados ficam, e o acesso passa só pelos repositórios JPA: trocar por um banco em servidor muda a configuração, não o código.
+- **IA com modelo reserva.** A API chama o Gemini por HTTPS com limite total de 15 segundos (RNF-02). Se o primeiro modelo estiver sobrecarregado, tenta o seguinte; se nenhum responder, devolve o roteiro padrão.
 
 ## Nível 3: Componentes
 
@@ -67,7 +67,7 @@ O que existe dentro do contêiner **API REST**. Cada componente é um conjunto d
 | `NotificacaoService` e `EmailService` | | Aviso dentro do sistema e por e-mail a cada mudança de status | RF-14 |
 | `AdminService` | | Indicadores e aprovação ou bloqueio de fornecedores | RF-15 |
 | `AssistenteIAService` | | Monta o prompt, chama o modelo, valida a resposta e aplica o roteiro padrão se a IA falhar | RF-09, RN-09, RNF-02 |
-| `ClienteLLM` | `ClaudeClienteLLM` | Interface de saída para o serviço de IA. A implementação usa o SDK `anthropic-java` com limite de 15 s | RNF-02, RNF-05 |
+| `ClienteLLM` | `GeminiClienteLLM` | Interface de saída para o serviço de IA. A implementação chama a API Gemini por HTTPS, com limite de 15 s e modelo reserva | RNF-02, RNF-05 |
 | Repositórios | `UsuarioRepository`, `OfertaRepository`, `ItinerarioRepository`, `ReservaRepository`, `AvaliacaoRepository`, `NotificacaoRepository`, `GeracaoRoteiroRepository` | Consultas e gravação com Spring Data JPA | |
 | Modelo de domínio | Pacote `domain` | Entidades e regras que pertencem aos próprios objetos (detalhado no nível 4) | RN-01 a RN-04 |
 | `DataSeeder` | | Cria a base de demonstração e renova as ofertas datadas a cada início | Seção 1.9 |
@@ -92,7 +92,7 @@ Três diagramas de classes, um para cada parte mais importante do código.
 
 ### 4.3 Assistente de roteiro com IA
 
-O `AssistenteIAService` depende da interface `ClienteLLM`, e não do SDK. Isso permite trocar o provedor do modelo e testar o assistente sem chamar a API. Os registros `Candidatos`, `Escolha`, `Janela` e `Plano` são os passos da seção 10.2 do planejamento: buscar ofertas, receber a escolha da IA, validar e montar.
+O `AssistenteIAService` depende da interface `ClienteLLM`, e não do provedor de IA. Isso permite trocar o provedor do modelo e testar o assistente sem chamar a API. Os registros `Candidatos`, `Escolha`, `Janela` e `Plano` são os passos da seção 10.2 do planejamento: buscar ofertas, receber a escolha da IA, validar e montar.
 
 ![Classes do assistente de IA](img/c4-4-codigo-assistente.png)
 

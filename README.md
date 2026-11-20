@@ -6,8 +6,8 @@ Plataforma web que reúne, em um só lugar, a busca de passagens, hospedagens e 
 |---|---|
 | Back-end | Java 17, Spring Boot 3.5 (Web, Security, Data JPA, Validation), JWT |
 | Front-end | React 19, Vite 8, Tailwind CSS 4, React Router 7 |
-| Banco de dados | PostgreSQL no Supabase (ou H2 em memória, sem configuração, para desenvolver) |
-| Serviço de IA | API Claude, da Anthropic, chamada só pelo back-end |
+| Banco de dados | H2 em memória, embutido na API (sem instalação nem configuração) |
+| Serviço de IA | API Gemini, do Google, chamada só pelo back-end |
 
 ## Entregáveis
 
@@ -57,37 +57,25 @@ Todas usam a mesma senha, definida em `SEED_SENHA` (o valor padrão está em [`b
 | `novo@viaja.com` | Fornecedor pendente | Cadastro aguardando aprovação do administrador |
 | `admin@viaja.com` | Administrador | Indicadores, aprovação de fornecedores e moderação |
 
-A base tem 6 cidades (Salvador, Lençóis, Porto Seguro, Ilhéus, Itacaré e Praia do Forte), 15 hospedagens com avaliações e passagens e passeios para os próximos 21 dias. A cada início a API completa as datas que faltam, então sempre há ofertas futuras.
+A base tem 6 cidades (Salvador, Lençóis, Porto Seguro, Ilhéus, Itacaré e Praia do Forte), 15 hospedagens com avaliações e passagens e passeios para os próximos 21 dias.
 
-## Usando o Supabase como banco
+### Banco de dados
 
-1. Crie um projeto em <https://supabase.com> e guarde a senha do banco.
-2. No painel, abra **Connect** e copie os dados do **Session pooler** (porta 5432).
-3. Copie `backend/.env.example` para `backend/.env` e preencha:
-
-   ```properties
-   DB_URL=jdbc:postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
-   DB_USER=postgres.SEU_PROJECT_REF
-   DB_PASSWORD=SUA_SENHA_DO_BANCO
-   JWT_SECRET=um-texto-aleatorio-com-32-caracteres-ou-mais
-   ```
-
-   O Supabase mostra o endereço como `postgresql://usuario:senha@host:5432/postgres`. No `DB_URL` entra só `jdbc:postgresql://host:5432/postgres?sslmode=require`; usuário e senha vão nas outras duas linhas.
-4. Suba o back-end normalmente. No primeiro início ele cria as tabelas e a base de demonstração.
-
-As tabelas ficam no esquema `viaja`, e não no `public`. O Supabase expõe o esquema `public` pela Data API dele; manter os dados em outro esquema garante que o único caminho até eles é a API Java, com as regras de negócio e o controle de acesso. O arquivo `.env` está no `.gitignore` e nunca deve ser enviado ao repositório.
+O banco é o **H2 em memória**, que roda dentro da própria API. Os dados existem enquanto a API está no ar: ao reiniciar, o que foi cadastrado some e a base de demonstração é recriada, com as datas das ofertas contadas a partir do dia do início. Isso deixa a demonstração sempre no mesmo ponto de partida e dispensa instalar banco.
 
 ## Assistente de roteiro com IA
 
 O viajante informa origem, destino, datas, número de pessoas, orçamento e até 3 interesses. O back-end busca as ofertas ativas, envia o pedido e a lista ao modelo de linguagem, valida a resposta (ids existentes, datas compatíveis, custo dentro do orçamento) e devolve o roteiro para o viajante ajustar e salvar.
 
-Para ligar a IA, coloque no `backend/.env`:
+O modelo de linguagem é o **Gemini**, do Google. Para ligar a IA, crie uma chave em <https://aistudio.google.com/apikey>, copie `backend/.env.example` para `backend/.env` e preencha:
 
 ```properties
-ANTHROPIC_API_KEY=sua-chave
+GEMINI_API_KEY=sua-chave
 ```
 
-Sem a chave, ou se o modelo demorar mais de 15 segundos, o assistente devolve um **roteiro padrão** montado por regra (transporte mais barato, hospedagem mais bem avaliada que cabe no orçamento e passeios pelos interesses) e avisa na tela. Cada usuário pode gerar até 5 roteiros por dia. Nenhum dado pessoal do viajante é enviado ao modelo.
+O arquivo `.env` está no `.gitignore` e nunca deve ser enviado ao repositório. A API tenta os modelos da lista `IA_MODELOS` em ordem: se o primeiro estiver sobrecarregado ou lento, passa para o seguinte, sempre dentro do limite total de 15 segundos.
+
+Sem a chave, ou se nenhum modelo responder a tempo, o assistente devolve um **roteiro padrão** montado por regra (transporte mais barato, hospedagem mais bem avaliada que cabe no orçamento e passeios pelos interesses) e avisa na tela. Cada usuário pode gerar até 5 roteiros por dia. Nenhum dado pessoal do viajante é enviado ao modelo.
 
 ## Testes
 
@@ -96,7 +84,7 @@ cd backend
 ./mvnw test
 ```
 
-São 11 testes: o fluxo completo do BPMN (buscar, solicitar, aceitar, descontar vagas e notificar), o controle de acesso por perfil, as regras RN-01 e RN-10, o assistente sem IA e seis casos de conflito de datas do itinerário.
+São 16 testes: o fluxo completo do BPMN (buscar, solicitar, aceitar, descontar vagas e notificar), o controle de acesso por perfil, as regras RN-01 e RN-10, o assistente com e sem IA (incluindo o descarte de oferta inventada pelo modelo), o cliente do Gemini contra um servidor falso e seis casos de conflito de datas do itinerário. Os testes não usam a internet nem a chave real.
 
 No front-end, `npm run lint` e `npm run build` verificam o código.
 
@@ -110,7 +98,7 @@ No front-end, `npm run lint` e `npm run build` verificam o código.
 | RF-04 a RF-06 Buscas de passagens, hospedagens e passeios | `OfertaService`, `OfertaController` |
 | RF-07 Comparação de até 4 ofertas | `OfertaService.comparar` |
 | RF-08 Itinerário por dia com alerta de conflito e custo total | `ItinerarioService`, `ValidadorItinerario` |
-| RF-09 Assistente de roteiro com IA | `AssistenteIAService`, `ClaudeClienteLLM` |
+| RF-09 Assistente de roteiro com IA | `AssistenteIAService`, `GeminiClienteLLM` |
 | RF-10 a RF-12 Solicitar, responder e cancelar reservas | `ReservaService`, classe `Reserva` |
 | RF-13 Avaliação de itens usufruídos | `AvaliacaoService` |
 | RF-14 Notificações no sistema e por e-mail | `NotificacaoService`, `EmailService` |
@@ -121,6 +109,7 @@ As dez regras de negócio (RN-01 a RN-10) estão marcadas em comentários nos po
 ## Limites deste MVP
 
 - **Sem pagamento**, de propósito: a reserva é solicitada na plataforma e o pagamento é combinado direto com o fornecedor.
+- **Banco em memória:** reiniciar a API apaga o que foi cadastrado e recria a base de demonstração.
 - **E-mail:** sem um servidor SMTP configurado no `.env`, os e-mails são apenas registrados no log da API, e o link de confirmação de cadastro aparece na própria tela.
 - **Fotos:** a oferta guarda o endereço de uma imagem; não há envio de arquivo.
 - **Vagas de hospedagem:** são um contador de quartos, sem calendário de disponibilidade por data.

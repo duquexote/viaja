@@ -29,7 +29,7 @@ flowchart TB
             sNotificacao["<b>NotificacaoService</b><br/>RF-14"]
             sEmail["<b>EmailService</b><br/>Envio por SMTP"]
             sIA["<b>AssistenteIAService</b><br/>RF-09, RN-09<br/>Prompt, validação e<br/>roteiro padrão"]
-            sLLM["<b>ClienteLLM</b><br/>Interface implementada por<br/>ClaudeClienteLLM"]
+            sLLM["<b>ClienteLLM</b><br/>Interface implementada por<br/>GeminiClienteLLM"]
         end
 
         repos["<b>Repositórios</b><br/>[Componente: Spring Data JPA, pacote repository]<br/>UsuarioRepository, OfertaRepository, ItinerarioRepository, ReservaRepository,<br/>AvaliacaoRepository, NotificacaoRepository, GeracaoRoteiroRepository"]
@@ -37,8 +37,8 @@ flowchart TB
         seed["<b>DataSeeder</b><br/>[Componente: ApplicationRunner]<br/>Cria e renova a base de demonstração"]
     end
 
-    db[("<b>Banco de dados</b><br/>[Contêiner: PostgreSQL no Supabase]")]
-    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Claude]"]
+    db[("<b>Banco de dados</b><br/>[Contêiner: H2 em memória]")]
+    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Gemini]"]
     email["<b>Serviço de e-mail</b><br/>[Sistema externo: SMTP]"]
 
     spa -->|"JSON sobre HTTPS<br/>com token JWT"| seg

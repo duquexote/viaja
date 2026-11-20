@@ -45,11 +45,8 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Base de demonstração (seção 1.9 do planejamento): cidades da Bahia, fornecedores, ofertas e
- * viajantes fictícios. Roda no início da aplicação.
- *
- * - Banco vazio: cria usuários, hospedagens, avaliações e o histórico de exemplo.
- * - Sempre: completa passagens e passeios datados até 21 dias à frente, para a demonstração
- *   continuar tendo ofertas futuras mesmo que o banco tenha sido criado semanas antes.
+ * viajantes fictícios. O banco é o H2 em memória, então a base é recriada a cada início da
+ * aplicação, com passagens e passeios datados para os próximos 21 dias a partir de hoje.
  *
  * Todas as contas de demonstração usam a senha definida em SEED_SENHA (ver README).
  */
@@ -84,21 +81,13 @@ public class DataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (!ativo) {
+        if (!ativo || usuarios.count() > 0) {
             return;
         }
-        boolean bancoVazio = usuarios.count() == 0;
-        if (bancoVazio) {
-            senhaHash = passwordEncoder.encode(senha);
-            criarUsuariosEHospedagens();
-        }
-        List<Oferta> novas = completarOfertasDatadas();
-        if (bancoVazio) {
-            criarHistoricoDeExemplo(novas);
-            log.info("Base de demonstração criada: {} usuários e {} ofertas.", usuarios.count(), ofertas.count());
-        } else if (!novas.isEmpty()) {
-            log.info("Base de demonstração atualizada com {} ofertas datadas novas.", novas.size());
-        }
+        senhaHash = passwordEncoder.encode(senha);
+        criarUsuariosEHospedagens();
+        criarHistoricoDeExemplo(criarOfertasDatadas());
+        log.info("Base de demonstração criada: {} usuários e {} ofertas.", usuarios.count(), ofertas.count());
     }
 
     // ---------------------------------------------------------------- usuários e hospedagens
@@ -258,35 +247,21 @@ public class DataSeeder implements ApplicationRunner {
             new Roteiro(EMAIL_PASSEIOS, "Caiaque na Lagoa Timeantube", "Praia do Forte", "Natureza", "14:00", 3, "95.00", 10, 4.5, 8,
                     "Remada tranquila pela lagoa para observar aves, com guia local."));
 
-    /** Gera passagens e passeios do dia seguinte ao último já cadastrado até 21 dias à frente. */
-    private List<Oferta> completarOfertasDatadas() {
-        List<Oferta> novas = new ArrayList<>();
-        LocalDate hoje = LocalDate.now();
-        LocalDateTime ultima = ofertas.ultimaPartida();
-        LocalDate de = hoje.plusDays(1);
-        if (ultima != null && ultima.toLocalDate().plusDays(1).isAfter(de)) {
-            de = ultima.toLocalDate().plusDays(1);
-        }
-        LocalDate ate = hoje.plusDays(DIAS_A_FRENTE);
-        if (de.isAfter(ate)) {
-            return novas;
-        }
+    /** Gera as passagens e os passeios de cada um dos próximos 21 dias. */
+    private List<Oferta> criarOfertasDatadas() {
         Map<String, Fornecedor> fornecedores = new HashMap<>();
         for (String email : List.of(EMAIL_ONIBUS, EMAIL_AEREO, EMAIL_GUIA, EMAIL_PASSEIOS)) {
             fornecedores.put(email, fornecedorDemo(email));
         }
-        for (LocalDate dia = de; !dia.isAfter(ate); dia = dia.plusDays(1)) {
+        List<Oferta> novas = new ArrayList<>();
+        LocalDate hoje = LocalDate.now();
+        for (int i = 1; i <= DIAS_A_FRENTE; i++) {
+            LocalDate dia = hoje.plusDays(i);
             for (Rota rota : ROTAS) {
-                Fornecedor fornecedor = fornecedores.get(rota.emailFornecedor());
-                if (fornecedor != null) {
-                    novas.add(passagem(fornecedor, rota, dia));
-                }
+                novas.add(passagem(fornecedores.get(rota.emailFornecedor()), rota, dia));
             }
             for (Roteiro roteiro : PASSEIOS) {
-                Fornecedor fornecedor = fornecedores.get(roteiro.emailFornecedor());
-                if (fornecedor != null) {
-                    novas.add(passeio(fornecedor, roteiro, dia));
-                }
+                novas.add(passeio(fornecedores.get(roteiro.emailFornecedor()), roteiro, dia));
             }
         }
         ofertas.saveAll(novas);
@@ -359,9 +334,9 @@ public class DataSeeder implements ApplicationRunner {
 
     private Fornecedor fornecedorDemo(String email) {
         return usuarios.findByEmailIgnoreCase(email)
-                .filter(u -> u instanceof Fornecedor && u.isAtivo())
-                .map(u -> (Fornecedor) u)
-                .orElse(null);
+                .filter(Fornecedor.class::isInstance)
+                .map(Fornecedor.class::cast)
+                .orElseThrow();
     }
 
     private Hospedagem hospedagem(Fornecedor fornecedor, String titulo, String cidade, TipoHospedagem tipo,

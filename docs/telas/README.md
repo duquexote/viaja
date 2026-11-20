@@ -44,7 +44,7 @@ Capturas da aplicação rodando com a base de demonstração, feitas em 1440 px 
 | [Roteiro sugerido](15-assistente-roteiro.png) | Roteiro dia a dia, motivo de cada item e custo contra o orçamento | RF-09, RN-09, RNF-02 |
 | [Itinerário salvo](16-itinerario-do-assistente.png) | O roteiro salvo como itinerário editável | RF-08, RF-09 |
 
-Nesta captura a API estava sem a chave do serviço de IA, então aparece o aviso de **roteiro padrão**, que é o comportamento previsto no RNF-02 quando a IA não responde.
+Nesta captura o roteiro foi gerado pelo Gemini: o selo "Gerado por IA" e o motivo de cada item vêm da resposta do modelo, e todas as ofertas existem na base. Quando a IA não responde em 15 segundos, a mesma tela mostra o aviso de **roteiro padrão** (RNF-02).
 
 ![Roteiro sugerido](15-assistente-roteiro.png)
 

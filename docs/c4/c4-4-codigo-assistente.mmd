@@ -20,10 +20,11 @@ classDiagram
         +disponivel() boolean
         +completar(instrucoes, pedido) String
     }
-    class ClaudeClienteLLM {
-        -AnthropicClient cliente
-        -String modelo
-        -int timeoutSegundos
+    class GeminiClienteLLM {
+        -String apiKey
+        -List~String~ modelos
+        -String urlBase
+        -Duration tempoTotal
         +disponivel() boolean
         +completar(instrucoes, pedido) String
     }
@@ -94,7 +95,7 @@ classDiagram
 
     ViajanteController --> AssistenteIAService : chama
     AssistenteIAService --> ClienteLLM : usa
-    ClienteLLM <|.. ClaudeClienteLLM : implementa
+    ClienteLLM <|.. GeminiClienteLLM : implementa
     AssistenteIAService --> OfertaRepository : busca ofertas ativas
     AssistenteIAService --> GeracaoRoteiroRepository : conta e registra o uso
     GeracaoRoteiroRepository ..> GeracaoRoteiro

@@ -74,7 +74,7 @@ níveis de detalhe. Cada nível responde a uma pergunta:
 O ViaJá é uma plataforma web que reúne busca de passagens, hospedagens e passeios, montagem de
 itinerário com validação de datas, um assistente de roteiro com IA e a solicitação de reserva sem
 pagamento. O back-end é escrito em Java com Spring Boot, o front-end em React e o banco de dados é um
-PostgreSQL hospedado no Supabase.
+H2 em memória, embutido na própria API.
 
 Nos diagramas, as cores seguem a convenção do C4: azul-escuro para pessoas, azul para o sistema e
 seus contêineres, azul-claro para componentes e cinza para sistemas externos. Os diagramas são
@@ -102,7 +102,7 @@ sistemas externos de que ele depende.
         Fornecedor & Pessoa & Empresa de transporte, hotel, pousada ou guia local. Publica ofertas e aceita ou recusa solicitações. \\
         Administrador & Pessoa & Aprova ou bloqueia fornecedores, modera avaliações e acompanha indicadores de uso. \\
         ViaJá & Sistema & Plataforma web de busca, itinerário e solicitação de reserva sem pagamento. \\
-        Serviço de IA & Sistema externo & API Claude, da Anthropic. Recebe o pedido de viagem e a lista de ofertas e devolve o roteiro em JSON. \\
+        Serviço de IA & Sistema externo & API Gemini, do Google. Recebe o pedido de viagem e a lista de ofertas e devolve o roteiro em JSON. \\
         Serviço de e-mail & Sistema externo & Servidor SMTP que entrega a confirmação de cadastro e os avisos de reserva. \\
         \bottomrule
     \end{tabularx}
@@ -131,7 +131,7 @@ O diagrama de contêineres abre a caixa do ViaJá e mostra as três partes que r
         \midrule
         Aplicação web (SPA) & JavaScript, React 19, Vite 8, Tailwind CSS 4 & Interface responsiva que roda no navegador. Não guarda regra de negócio nem segredo. \\
         API REST & Java 17, Spring Boot 3.5, Spring Security, Spring Data JPA & Regras de negócio, autenticação por JWT, validação de datas e vagas, notificações e chamada ao serviço de IA. \\
-        Banco de dados & PostgreSQL no Supabase, esquema \texttt{viaja} & Usuários, ofertas, itinerários, reservas, avaliações e notificações. \\
+        Banco de dados & H2 em memória, embutido na API & Usuários, ofertas, itinerários, reservas, avaliações e notificações. \\
         \bottomrule
     \end{tabularx}
     \caption{Contêineres do ViaJá.}
@@ -144,11 +144,13 @@ Decisões de arquitetura visíveis neste nível:
           isso a chave da API de IA fica apenas no back-end, em variável de ambiente (RNF-05).
     \item \textbf{Sessão sem estado.} Depois do login, a SPA envia o token JWT, válido por 24 horas, no
           cabeçalho \texttt{Authorization} de cada chamada (RNF-03).
-    \item \textbf{Supabase como banco gerenciado.} A API conecta por JDBC com TLS. As tabelas ficam no
-          esquema \texttt{viaja}, e não no \texttt{public}, porque o Supabase expõe o esquema
-          \texttt{public} pela Data API dele.
-    \item \textbf{H2 em memória para desenvolvimento.} Sem a variável \texttt{DB\_URL}, a mesma API sobe
-          com um banco H2 e recria a base de demonstração a cada início.
+    \item \textbf{Banco em memória.} O H2 roda dentro do processo da API, sem instalação. Os dados
+          existem enquanto a API está no ar e a base de demonstração é recriada a cada início, o que
+          deixa a apresentação sempre no mesmo ponto de partida. O acesso passa só pelos repositórios
+          JPA, então trocar por um banco em servidor muda a configuração, e não o código.
+    \item \textbf{IA com modelo reserva.} A API chama o Gemini por HTTPS com limite total de 15
+          segundos (RNF-02). Se o primeiro modelo estiver sobrecarregado, tenta o seguinte; se nenhum
+          responder, devolve o roteiro padrão.
 \end{itemize}
 
 % ---------------------------------------------------------------- nível 3
@@ -180,7 +182,7 @@ conjunto de classes do pacote \texttt{br.ucsal.viaja}.
         \classe{NotificacaoService} e \classe{EmailService} & Aviso dentro do sistema e por e-mail a cada mudança de status. & RF-14 \\
         \classe{AdminService} & Indicadores de uso e aprovação ou bloqueio de fornecedores. & RF-15 \\
         \classe{AssistenteIAService} & Monta o prompt, chama o modelo, valida a resposta e aplica o roteiro padrão se a IA falhar. & RF-09, RN-09, RNF-02 \\
-        \classe{ClienteLLM} (\classe{ClaudeClienteLLM}) & Interface de saída para o serviço de IA, implementada com o SDK da Anthropic e limite de 15 segundos. & RNF-02, RNF-05 \\
+        \classe{ClienteLLM} (\classe{GeminiClienteLLM}) & Interface de saída para o serviço de IA. A implementação chama a API Gemini por HTTPS, com limite de 15 segundos e modelo reserva. & RNF-02, RNF-05 \\
         Repositórios (Spring Data JPA) & Consultas e gravação no banco de dados. & \\
         Modelo de domínio & Entidades e regras que pertencem aos próprios objetos. & RN-01 a RN-04 \\
         \classe{DataSeeder} & Cria a base de demonstração e renova as ofertas datadas a cada início. & Seção 1.9 \\
@@ -227,7 +229,7 @@ solicitações de reserva.
 
 \subsection{Assistente de roteiro com IA}
 
-O \classe{AssistenteIAService} depende da interface \classe{ClienteLLM}, e não do SDK do provedor.
+O \classe{AssistenteIAService} depende da interface \classe{ClienteLLM}, e não do provedor de IA.
 Isso permite trocar o modelo de linguagem e testar o assistente sem chamar a API externa. Os registros
 \classe{Candidatos}, \classe{Escolha}, \classe{Janela} e \classe{Plano} representam os passos do
 assistente: buscar as ofertas ativas, receber a escolha da IA, validar e montar o roteiro.
