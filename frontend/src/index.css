@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/* Identidade visual do ViaJá: verde-petróleo, coral de pôr do sol e areia. */
+@theme {
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-petroleo-50: #eef8f6;
+  --color-petroleo-100: #d6efea;
+  --color-petroleo-200: #addfd6;
+  --color-petroleo-300: #7ac6bc;
+  --color-petroleo-400: #49a69d;
+  --color-petroleo-500: #2e8a83;
+  --color-petroleo-600: #226e6b;
+  --color-petroleo-700: #1d5859;
+  --color-petroleo-800: #174649;
+  --color-petroleo-900: #10353a;
+  --color-petroleo-950: #08242a;
+
+  --color-coral-50: #fff4ed;
+  --color-coral-100: #ffe6d5;
+  --color-coral-200: #ffc9aa;
+  --color-coral-300: #ffa574;
+  --color-coral-400: #fd7f47;
+  --color-coral-500: #f4612a;
+  --color-coral-600: #c8431a;
+  --color-coral-700: #a33416;
+  --color-coral-800: #822c18;
+
+  --color-sol-200: #ffe3a8;
+  --color-sol-300: #ffd27a;
+  --color-sol-400: #fbbd4a;
+  --color-sol-500: #e99f1c;
+
+  --color-areia-50: #fcf9f3;
+  --color-areia-100: #f7f0e3;
+  --color-areia-200: #eee2cb;
+  --color-areia-300: #e0cda8;
+
+  --color-tinta: #1c3236;
+  --color-tinta-suave: #556b6e;
+
+  --shadow-cartao: 0 1px 2px rgb(8 36 42 / 0.05), 0 14px 30px -20px rgb(8 36 42 / 0.3);
+  --shadow-flutuante: 0 28px 60px -28px rgb(8 36 42 / 0.5);
+
+  --animate-surgir: surgir 0.35s ease-out both;
+  --animate-trilha: trilha 1.7s ease-in-out infinite;
+
+  @keyframes surgir {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes trilha {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(360%);
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-width: 320px;
+    overflow-x: clip;
+    background-color: var(--color-areia-50);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-coral-500);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-coral-200);
+    color: var(--color-petroleo-950);
+  }
+
+  button:not(:disabled),
+  select,
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-sm leading-tight font-semibold transition-colors duration-150 select-none disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-sm {
+    @apply px-3.5 py-2 text-[0.8125rem];
+  }
+  .btn-lg {
+    @apply px-7 py-3.5 text-base;
+  }
+  .btn-primario {
+    @apply bg-petroleo-800 text-white hover:bg-petroleo-700 active:bg-petroleo-900;
+  }
+  .btn-acento {
+    @apply bg-coral-500 text-petroleo-950 hover:bg-coral-400 active:bg-coral-500;
+  }
+  .btn-contorno {
+    @apply border border-petroleo-800/30 bg-white text-petroleo-800 hover:border-petroleo-800/70 hover:bg-petroleo-50;
+  }
+  .btn-fantasma {
+    @apply text-petroleo-800 hover:bg-petroleo-800/10;
+  }
+  .btn-perigo {
+    @apply bg-red-700 text-white hover:bg-red-800;
+  }
+  .btn-perigo-contorno {
+    @apply border border-red-700/35 bg-white text-red-800 hover:bg-red-50;
+  }
+
+  .campo {
+    @apply block min-h-11 w-full rounded-xl border border-petroleo-900/25 bg-white px-3.5 py-2.5 text-[0.9375rem] text-tinta transition-colors placeholder:text-tinta-suave/80 hover:border-petroleo-900/45 focus:border-petroleo-600 disabled:bg-areia-100 disabled:text-tinta-suave;
+  }
+  .rotulo {
+    @apply mb-1.5 block text-sm font-semibold text-petroleo-900;
+  }
+  .cartao {
+    @apply rounded-3xl border border-petroleo-900/10 bg-white shadow-cartao;
+  }
+  .selo {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs leading-none font-semibold whitespace-nowrap;
+  }
+  .elo {
+    @apply font-semibold text-petroleo-700 underline decoration-petroleo-700/35 underline-offset-4 hover:decoration-petroleo-700;
+  }
+}
