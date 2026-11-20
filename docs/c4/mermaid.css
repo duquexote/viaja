@@ -1,0 +1,15 @@
+/* Fonte sem serifa em todos os rótulos (os rótulos HTML não herdam a fonte do tema). */
+.node, .nodeLabel, .edgeLabel, .cluster-label, .label, text, span, p, div {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+.nodeLabel, .edgeLabel {
+  line-height: 1.35;
+}
+.edgeLabel, .edgeLabel p {
+  background-color: #ffffff !important;
+  color: #33404a;
+  font-size: 13px;
+}
+.cluster-label span, .cluster-label p {
+  font-weight: bold;
+}

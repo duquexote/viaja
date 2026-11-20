@@ -1,0 +1,22 @@
+flowchart TB
+    viajante["<b>Viajante</b><br/>[Pessoa]<br/><br/>Pesquisa e compara ofertas, monta itinerários,<br/>solicita reservas e avalia o que usou"]
+    fornecedor["<b>Fornecedor</b><br/>[Pessoa]<br/><br/>Empresa de transporte, hotel, pousada ou guia<br/>que publica ofertas e responde solicitações"]
+    admin["<b>Administrador</b><br/>[Pessoa]<br/><br/>Aprova ou bloqueia fornecedores, modera<br/>avaliações e acompanha indicadores"]
+
+    viaja["<b>ViaJá</b><br/>[Sistema de software]<br/><br/>Plataforma web que reúne busca de passagens, hospedagens e passeios,<br/>montagem de itinerário com validação de datas, assistente de roteiro com IA<br/>e solicitação de reserva sem pagamento"]
+
+    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Claude, da Anthropic]<br/><br/>Modelo de linguagem que escolhe, entre as ofertas<br/>enviadas, as que formam o roteiro sugerido"]
+    email["<b>Serviço de e-mail</b><br/>[Sistema externo: servidor SMTP]<br/><br/>Entrega a confirmação de cadastro e os avisos<br/>de mudança de status das reservas"]
+
+    viajante -->|"Busca, monta itinerário,<br/>solicita reserva e avalia<br/>[HTTPS]"| viaja
+    fornecedor -->|"Cadastra ofertas e aceita<br/>ou recusa solicitações<br/>[HTTPS]"| viaja
+    admin -->|"Aprova fornecedores e<br/>modera avaliações<br/>[HTTPS]"| viaja
+    viaja -->|"Envia o pedido de viagem e a lista de ofertas;<br/>recebe o roteiro em JSON<br/>[HTTPS]"| ia
+    viaja -->|"Envia e-mails transacionais<br/>[SMTP]"| email
+
+    classDef pessoa fill:#08427b,stroke:#052e56,stroke-width:2px,color:#ffffff
+    classDef sistema fill:#1168bd,stroke:#0b4884,stroke-width:2px,color:#ffffff
+    classDef externo fill:#8a8a8a,stroke:#5f5f5f,stroke-width:2px,color:#ffffff
+    class viajante,fornecedor,admin pessoa
+    class viaja sistema
+    class ia,email externo

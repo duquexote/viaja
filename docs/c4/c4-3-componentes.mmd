@@ -1,0 +1,84 @@
+flowchart TB
+    spa["<b>Aplicação web (SPA)</b><br/>[Contêiner: React]"]
+
+    subgraph api["API REST [Contêiner: Java 17, Spring Boot 3.5]"]
+        direction TB
+
+        seg["<b>Segurança</b><br/>[Componente: Spring Security]<br/>SecurityConfig, JwtAuthFilter, JwtService<br/>Valida o JWT e libera as rotas por perfil"]
+
+        subgraph web["Camada web: pacote web [Spring MVC, @RestController]"]
+            direction LR
+            cAuth["<b>AuthController</b><br/>Cadastro, confirmação<br/>de e-mail e login"]
+            cUsuario["<b>UsuarioController</b><br/>Perfil, exclusão de conta<br/>e notificações"]
+            cOferta["<b>OfertaController</b><br/>Buscas públicas, comparação<br/>e detalhes"]
+            cViajante["<b>ViajanteController</b><br/>Itinerários, reservas,<br/>avaliações e assistente"]
+            cFornecedor["<b>FornecedorController</b><br/>Ofertas e resposta<br/>às solicitações"]
+            cAdmin["<b>AdminController</b><br/>Indicadores, fornecedores<br/>e moderação"]
+        end
+
+        subgraph servicos["Regras de negócio: pacote service [@Service, @Transactional]"]
+            direction LR
+            sAuth["<b>AuthService</b><br/>RF-01, RN-01"]
+            sUsuario["<b>UsuarioService</b><br/>RF-02, LGPD"]
+            sOferta["<b>OfertaService</b><br/>RF-03 a RF-07,<br/>RN-06, RN-10"]
+            sItinerario["<b>ItinerarioService</b><br/>RF-08, RN-08"]
+            sValidador["<b>ValidadorItinerario</b><br/>Conflitos de datas<br/>e de vagas"]
+            sReserva["<b>ReservaService</b><br/>RF-10 a RF-12,<br/>RN-02, RN-03, RN-07"]
+            sAvaliacao["<b>AvaliacaoService</b><br/>RF-13, RN-04"]
+            sAdmin["<b>AdminService</b><br/>RF-15"]
+            sNotificacao["<b>NotificacaoService</b><br/>RF-14"]
+            sEmail["<b>EmailService</b><br/>Envio por SMTP"]
+            sIA["<b>AssistenteIAService</b><br/>RF-09, RN-09<br/>Prompt, validação e<br/>roteiro padrão"]
+            sLLM["<b>ClienteLLM</b><br/>Interface implementada por<br/>ClaudeClienteLLM"]
+        end
+
+        repos["<b>Repositórios</b><br/>[Componente: Spring Data JPA, pacote repository]<br/>UsuarioRepository, OfertaRepository, ItinerarioRepository, ReservaRepository,<br/>AvaliacaoRepository, NotificacaoRepository, GeracaoRoteiroRepository"]
+        dominio["<b>Modelo de domínio</b><br/>[Componente: entidades JPA, pacote domain]<br/>Usuario, Oferta, Itinerario, Reserva, Avaliacao, Notificacao<br/>(detalhado no nível 4)"]
+        seed["<b>DataSeeder</b><br/>[Componente: ApplicationRunner]<br/>Cria e renova a base de demonstração"]
+    end
+
+    db[("<b>Banco de dados</b><br/>[Contêiner: PostgreSQL no Supabase]")]
+    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Claude]"]
+    email["<b>Serviço de e-mail</b><br/>[Sistema externo: SMTP]"]
+
+    spa -->|"JSON sobre HTTPS<br/>com token JWT"| seg
+    seg --> web
+
+    cAuth --> sAuth
+    cUsuario --> sUsuario
+    cUsuario --> sNotificacao
+    cOferta --> sOferta
+    cOferta --> sAvaliacao
+    cViajante --> sItinerario
+    cViajante --> sReserva
+    cViajante --> sAvaliacao
+    cViajante --> sIA
+    cFornecedor --> sOferta
+    cFornecedor --> sReserva
+    cAdmin --> sAdmin
+    cAdmin --> sAvaliacao
+
+    sItinerario --> sValidador
+    sItinerario --> sReserva
+    sReserva --> sNotificacao
+    sAdmin --> sNotificacao
+    sAuth --> sEmail
+    sNotificacao --> sEmail
+    sIA --> sLLM
+
+    servicos -->|"consultam e gravam"| repos
+    repos -->|"mapeiam"| dominio
+    seed --> repos
+    repos -->|"SQL via JDBC"| db
+    sLLM -->|"HTTPS"| ia
+    sEmail -->|"SMTP"| email
+
+    classDef conteiner fill:#438dd5,stroke:#2e6295,stroke-width:2px,color:#ffffff
+    classDef componente fill:#85bbf0,stroke:#5d82a8,stroke-width:1.5px,color:#0b2a4a
+    classDef externo fill:#8a8a8a,stroke:#5f5f5f,stroke-width:2px,color:#ffffff
+    class spa,db conteiner
+    class seg,cAuth,cUsuario,cOferta,cViajante,cFornecedor,cAdmin,sAuth,sUsuario,sOferta,sItinerario,sValidador,sReserva,sAvaliacao,sAdmin,sNotificacao,sEmail,sIA,sLLM,repos,dominio,seed componente
+    class ia,email externo
+    style api fill:#ffffff,stroke:#438dd5,stroke-width:2px,stroke-dasharray:6 4,color:#2e6295
+    style web fill:#f4f8fd,stroke:#a9c4e2,color:#2e6295
+    style servicos fill:#f4f8fd,stroke:#a9c4e2,color:#2e6295

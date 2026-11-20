@@ -1,0 +1,85 @@
+classDiagram
+    direction TB
+
+    class Viajante {
+        -List~String~ interesses
+    }
+    class Oferta {
+        <<abstract>>
+        -String titulo
+        -BigDecimal preco
+        -int vagas
+        +verificarDisponibilidade(unidades) boolean
+        +unidadesPara(pessoas) int
+        +custoPara(pessoas, noites) BigDecimal
+    }
+    class Itinerario {
+        -Long id
+        -String nome
+        -LocalDate dataInicio
+        -LocalDate dataFim
+        -int pessoas
+        -BigDecimal custoTotal
+        -boolean geradoPorIA
+        +adicionarItem(item)
+        +removerItem(item)
+        +totalDias() int
+        +dataDoDia(dia) LocalDate
+        +recalcularCusto()
+    }
+    class ItemItinerario {
+        -Long id
+        -int dia
+        -LocalTime horario
+        -Integer noites
+        +custo(pessoas) BigDecimal
+        +temReservaAtiva() boolean
+    }
+    class Reserva {
+        -Long id
+        -LocalDateTime dataSolicitacao
+        -LocalDateTime dataResposta
+        -int pessoas
+        -int quantidade
+        -Integer noites
+        -LocalDateTime dataInicio
+        -LocalDateTime dataFim
+        -BigDecimal valorTotal
+        -StatusReserva status
+        -String motivo
+        -boolean avaliada
+        +confirmar()
+        +recusar(motivo)
+        +expirar()
+        +cancelar(agora)
+        +podeCancelar(agora) boolean
+        +podeAvaliar(agora) boolean
+    }
+    class Avaliacao {
+        -Long id
+        -int nota
+        -String comentario
+        -LocalDate data
+    }
+    class StatusReserva {
+        <<enumeration>>
+        SOLICITADA
+        CONFIRMADA
+        RECUSADA
+        EXPIRADA
+        CANCELADA
+    }
+    class ValidadorItinerario {
+        +validar(itinerario) List~String~
+    }
+
+    Viajante "1" <-- "0..*" Itinerario : pertence a
+    Viajante "1" <-- "0..*" Reserva : solicitada por
+    ValidadorItinerario ..> Itinerario : valida datas e vagas
+    Avaliacao "0..1" --> "1" Reserva : nasce de
+    Itinerario "1" *-- "0..*" ItemItinerario : contém
+    Reserva "0..1" <-- "0..*" ItemItinerario : gerou
+    Reserva ..> StatusReserva
+    ItemItinerario "0..*" --> "1" Oferta : usa
+    Reserva "0..*" --> "1" Oferta : refere-se a
+    Avaliacao "0..*" --> "1" Oferta : avalia

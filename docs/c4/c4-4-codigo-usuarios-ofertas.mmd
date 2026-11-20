@@ -1,0 +1,88 @@
+classDiagram
+    direction TB
+
+    class Usuario {
+        <<abstract>>
+        -Long id
+        -String nome
+        -String email
+        -String senhaHash
+        -LocalDate dataNascimento
+        -boolean emailConfirmado
+        -boolean ativo
+        +getPerfil() Perfil
+        +maiorDeIdade(hoje) boolean
+    }
+    class Viajante {
+        -List~String~ interesses
+    }
+    class Fornecedor {
+        -String razaoSocial
+        -String cnpj
+        -Boolean aprovado
+        -Boolean bloqueado
+        +podePublicar() boolean
+        +nomeExibicao() String
+    }
+    class Administrador {
+        -Integer nivelAcesso
+    }
+    class Notificacao {
+        -Long id
+        -TipoNotificacao tipo
+        -String mensagem
+        -boolean lida
+        -LocalDateTime criadaEm
+        +marcarComoLida()
+    }
+
+    class Oferta {
+        <<abstract>>
+        -Long id
+        -String titulo
+        -String descricao
+        -String cidade
+        -BigDecimal preco
+        -int vagas
+        -boolean ativa
+        -double notaMedia
+        -int totalAvaliacoes
+        +getTipo() TipoOferta
+        +verificarDisponibilidade(unidades) boolean
+        +unidadesPara(pessoas) int
+        +custoPara(pessoas, noites) BigDecimal
+        +descontarVagas(unidades)
+        +devolverVagas(unidades)
+    }
+    class Passagem {
+        -String origem
+        -String destino
+        -TipoTransporte tipoTransporte
+        -LocalDateTime partida
+        -LocalDateTime chegada
+        +duracaoMinutos() long
+    }
+    class Hospedagem {
+        -TipoHospedagem tipoHospedagem
+        -List~String~ comodidades
+        -Integer capacidade
+        +unidadesPara(pessoas) int
+        +custoPara(pessoas, noites) BigDecimal
+    }
+    class Passeio {
+        -String categoria
+        -LocalDate data
+        -LocalTime horarioInicio
+        -Integer duracaoHoras
+        +inicio() LocalDateTime
+        +fim() LocalDateTime
+    }
+
+    Usuario <|-- Viajante
+    Usuario <|-- Fornecedor
+    Usuario <|-- Administrador
+    Usuario "1" <-- "0..*" Notificacao : destinatário
+    Fornecedor "1" <-- "0..*" Oferta : publicada por
+    Oferta <|-- Passagem
+    Oferta <|-- Hospedagem
+    Oferta <|-- Passeio

@@ -1,0 +1,106 @@
+classDiagram
+    direction LR
+
+    class ViajanteController {
+        +usoDoAssistente(logado) UsoAssistente
+        +gerarRoteiro(logado, pedido) RoteiroDTO
+    }
+    class AssistenteIAService {
+        -int limiteDiario
+        +uso(usuarioId) UsoAssistente
+        +gerarRoteiro(usuarioId, pedido) RoteiroDTO
+        -buscarCandidatos(pedido) Candidatos
+        ~montarPrompt(pedido, candidatos) String
+        ~interpretar(resposta, candidatos) Escolha
+        ~roteiroPadrao(pedido, candidatos) Escolha
+        ~montarPlano(pedido, candidatos, escolha) Plano
+    }
+    class ClienteLLM {
+        <<interface>>
+        +disponivel() boolean
+        +completar(instrucoes, pedido) String
+    }
+    class ClaudeClienteLLM {
+        -AnthropicClient cliente
+        -String modelo
+        -int timeoutSegundos
+        +disponivel() boolean
+        +completar(instrucoes, pedido) String
+    }
+    class OfertaRepository {
+        <<interface>>
+        +passagensDisponiveis(agora) List~Passagem~
+        +hospedagensDisponiveis() List~Hospedagem~
+        +passeiosDisponiveis(hoje) List~Passeio~
+    }
+    class GeracaoRoteiroRepository {
+        <<interface>>
+        +countByUsuarioIdAndCriadaEmGreaterThanEqual(usuarioId, inicio) long
+    }
+    class PedidoRoteiro {
+        <<record>>
+        String origem
+        String destino
+        LocalDate dataIda
+        LocalDate dataVolta
+        Integer pessoas
+        BigDecimal orcamento
+        List~String~ interesses
+    }
+    class Candidatos {
+        <<record>>
+        List~Passagem~ idas
+        List~Passagem~ voltas
+        List~Hospedagem~ hospedagens
+        List~Passeio~ passeios
+        +vazio() boolean
+        +porId() Map
+    }
+    class Escolha {
+        <<record>>
+        Map~Long, String~ motivos
+        String observacoes
+    }
+    class Janela {
+        <<record>>
+        LocalDateTime chegada
+        LocalDateTime saida
+        LocalDate checkin
+        int noites
+    }
+    class Plano {
+        <<record>>
+        Passagem ida
+        Passagem volta
+        Hospedagem hospedagem
+        Janela janela
+        List~Passeio~ passeios
+        BigDecimal custoTotal
+    }
+    class RoteiroDTO {
+        <<record>>
+        BigDecimal custoTotal
+        String observacoes
+        String fonte
+        String aviso
+        int restantesHoje
+        List~Dia~ dias
+    }
+    class GeracaoRoteiro {
+        -Long usuarioId
+        -LocalDateTime criadaEm
+        -String fonte
+    }
+
+    ViajanteController --> AssistenteIAService : chama
+    AssistenteIAService --> ClienteLLM : usa
+    ClienteLLM <|.. ClaudeClienteLLM : implementa
+    AssistenteIAService --> OfertaRepository : busca ofertas ativas
+    AssistenteIAService --> GeracaoRoteiroRepository : conta e registra o uso
+    GeracaoRoteiroRepository ..> GeracaoRoteiro
+    AssistenteIAService ..> PedidoRoteiro : recebe
+    AssistenteIAService ..> Candidatos : passo 2
+    AssistenteIAService ..> Escolha : passos 4 e 5
+    AssistenteIAService ..> Plano : validação final
+    Plano *-- Janela
+    AssistenteIAService ..> RoteiroDTO : devolve

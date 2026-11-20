@@ -1,0 +1,30 @@
+flowchart TB
+    viajante["<b>Viajante</b><br/>[Pessoa]"]
+    fornecedor["<b>Fornecedor</b><br/>[Pessoa]"]
+    admin["<b>Administrador</b><br/>[Pessoa]"]
+
+    subgraph sistema["ViaJá [Sistema de software]"]
+        direction TB
+        spa["<b>Aplicação web (SPA)</b><br/>[Contêiner: JavaScript, React 19, Vite 8, Tailwind CSS 4]<br/><br/>Interface responsiva que roda no navegador:<br/>buscas, comparação, itinerário, assistente,<br/>reservas e painéis de fornecedor e administrador"]
+        api["<b>API REST</b><br/>[Contêiner: Java 17, Spring Boot 3.5]<br/><br/>Regras de negócio (RN-01 a RN-10), autenticação<br/>por JWT, validação de datas e vagas, notificações<br/>e integração com o serviço de IA"]
+        db[("<b>Banco de dados</b><br/>[Contêiner: PostgreSQL no Supabase, esquema viaja]<br/><br/>Usuários, ofertas, itinerários, reservas,<br/>avaliações e notificações")]
+    end
+
+    ia["<b>Serviço de IA</b><br/>[Sistema externo: API Claude, da Anthropic]"]
+    email["<b>Serviço de e-mail</b><br/>[Sistema externo: servidor SMTP]"]
+
+    viajante -->|"Usa<br/>[HTTPS]"| spa
+    fornecedor -->|"Usa<br/>[HTTPS]"| spa
+    admin -->|"Usa<br/>[HTTPS]"| spa
+    spa -->|"Chama as rotas /api com o token JWT<br/>[JSON sobre HTTPS]"| api
+    api -->|"Lê e grava<br/>[JDBC com TLS, via Spring Data JPA]"| db
+    api -->|"Pede o roteiro; a chave da API<br/>fica só no back-end<br/>[HTTPS, SDK anthropic-java]"| ia
+    api -->|"Envia e-mails<br/>[SMTP]"| email
+
+    classDef pessoa fill:#08427b,stroke:#052e56,stroke-width:2px,color:#ffffff
+    classDef conteiner fill:#438dd5,stroke:#2e6295,stroke-width:2px,color:#ffffff
+    classDef externo fill:#8a8a8a,stroke:#5f5f5f,stroke-width:2px,color:#ffffff
+    class viajante,fornecedor,admin pessoa
+    class spa,api,db conteiner
+    class ia,email externo
+    style sistema fill:#ffffff,stroke:#1168bd,stroke-width:2px,stroke-dasharray:6 4,color:#1168bd
